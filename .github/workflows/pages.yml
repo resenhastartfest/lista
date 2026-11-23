@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - edmasterbymaster-startfest-event-site
   pull_request:
     branches:
       - main

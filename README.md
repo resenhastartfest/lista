@@ -1,6 +1,6 @@
 # StartFest
 
-Site mobile-first para divulgar eventos e receber listas de convidados. A interface foi iniciada com Vite + TypeScript; o projeto original continha apenas este README, sem framework ou convenções de aplicação existentes.
+Site mobile-first de gerenciamento de listas da Resenha Start Fest, para divulgar eventos e receber listas de convidados. A interface usa Vite + TypeScript.
 
 ## Desenvolvimento
 
@@ -17,14 +17,13 @@ npm run build
 
 ## GitHub Pages
 
-The Pages workflow builds the site on pushes to `main` and the StartFest feature branch, and on pull requests it runs the build without deploying. In the repository settings, choose **Settings > Pages > Build and deployment > Source: GitHub Actions**. Add the Supabase project URL as the `VITE_SUPABASE_URL` Actions repository variable, and add its public anon key as the `VITE_SUPABASE_ANON_KEY` Actions repository secret under **Settings > Secrets and variables > Actions**. The production build uses the `/startfest/` base path; local development keeps `/`. The page works with demo events until those settings are configured.
+O workflow gera e publica o site em pushes para `main`; pull requests executam apenas o build. Em **Settings > Pages > Build and deployment**, selecione **GitHub Actions**. Em **Settings > Secrets and variables > Actions**, cadastre a URL do projeto como variável `VITE_SUPABASE_URL` e a chave pública anon como segredo `VITE_SUPABASE_ANON_KEY`. No repositório `resenhastartfest/lista`, o endereço esperado é `https://resenhastartfest.github.io/lista/`; o build usa `/lista/` como caminho base, enquanto o desenvolvimento local usa `/`. Sem as configurações do Supabase, o site mostra eventos demonstrativos e não aceita inscrições.
 
 ## Supabase
 
-1. Aplique a migration em `supabase/migrations/20261120120000_create_event_guest_lists.sql`.
-2. Configure os segredos da função `submit-guest-list`: `RATE_LIMIT_SECRET` (segredo aleatório) e `ALLOWED_ORIGINS=https://ednilsontheedmaster.github.io,http://localhost:5173` (origens exatas separadas por vírgula, sem curingas). O Supabase fornece `SUPABASE_SERVICE_ROLE_KEY` automaticamente à função; ela nunca deve ser publicada no site.
-3. Implante a função com `supabase functions deploy submit-guest-list`.
-4. Configure as mesmas origens permitidas para a URL de produção do site; em desenvolvimento, inclua a origem local usada pelo Vite.
+1. Para um projeto novo do Supabase, vincule-o com `npx supabase link --project-ref SEU_PROJECT_REF` e aplique todas as migrations com `npx supabase db push --remote`. Para continuar usando o projeto existente, preserve o banco e confira as migrations pendentes antes de aplicá-las; o código no Git não copia automaticamente eventos, listas, usuários ou arquivos do Storage para outro projeto.
+2. Configure os segredos da função `submit-guest-list`: `RATE_LIMIT_SECRET` (segredo aleatório) e `ALLOWED_ORIGINS=https://resenhastartfest.github.io,http://localhost:5173` (origens exatas separadas por vírgula, sem caminho nem curingas). Se o site antigo continuar em uso com o mesmo Supabase, inclua também `https://ednilsontheedmaster.github.io` na lista; mantenha outras origens necessárias. O Supabase fornece `SUPABASE_SERVICE_ROLE_KEY` automaticamente à função; ela nunca deve ser publicada no site.
+3. Implante a função com `npx supabase functions deploy submit-guest-list`. A configuração de autenticação e os administradores pertencem ao projeto Supabase; um projeto novo exige sua própria configuração e criação de usuários.
 
 A função valida cada pessoa, exige consentimento, limita listas a dez pessoas e aplica limite de envios por janela usando um identificador HMAC do IP. Escritas são atômicas e acessíveis somente à função com a chave de serviço; o navegador nunca recebe essa chave. RLS permite leitura pública apenas de eventos publicados e reserva os dados pessoais da lista aos usuários autenticados cujo `app_metadata.role` seja `admin`.
 
