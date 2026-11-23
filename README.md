@@ -27,6 +27,8 @@ O workflow gera e publica o site em pushes para `main`; pull requests executam a
 
 A função valida cada pessoa, exige consentimento, limita listas a dez pessoas e aplica limite de envios por janela usando um identificador HMAC do IP. Escritas são atômicas e acessíveis somente à função com a chave de serviço; o navegador nunca recebe essa chave. RLS permite leitura pública apenas de eventos publicados e reserva os dados pessoais da lista aos usuários autenticados cujo `app_metadata.role` seja `admin`.
 
+Novas inscrições oferecem as opções Homem, Mulher e Casal. Os registros antigos de Pista e VIP mantêm seus valores originais e são identificados como antigos na administração; não são convertidos automaticamente.
+
 As tabelas `guest_list_submissions` e `guest_list_entries` separam cada envio de seus convidados e permitem agregações futuras por evento e tipo de entrada. Não são coletados dados de contato dos convidados. Eventos são ocultados e deixam de aceitar inscrições no horário de início, sem serem excluídos do banco.
 
 ## Administração

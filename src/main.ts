@@ -33,8 +33,8 @@ if (
 }
 
 const ticketTypes = [
-  { value: "standard", label: "Pista" },
-  { value: "vip", label: "VIP" },
+  { value: "man", label: "Homem" },
+  { value: "woman", label: "Mulher" },
   { value: "couple", label: "Casal" },
 ] as const;
 

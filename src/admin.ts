@@ -17,6 +17,10 @@ type EventRecord = {
 type Guest = { id: string; guest_name: string; ticket_type: string; created_at: string };
 type Submission = { guest_list_entries: Guest[] };
 
+const ticketLabels: Record<string, string> = {
+  man: "Homem", woman: "Mulher", couple: "Casal", standard: "Pista (antigo)", vip: "VIP (antigo)",
+};
+
 function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
   if (!element) throw new Error(`Elemento ausente: ${selector}`);
@@ -255,8 +259,7 @@ async function openGuests(event: EventRecord): Promise<void> {
     const row = document.createElement("div");
     row.className = "guest-row-admin";
     const text = document.createElement("span");
-    const labels: Record<string, string> = { standard: "Pista", vip: "VIP", couple: "Casal" };
-    text.textContent = `${guest.guest_name} · ${labels[guest.ticket_type] ?? guest.ticket_type}`;
+    text.textContent = `${guest.guest_name} · ${ticketLabels[guest.ticket_type] ?? guest.ticket_type}`;
     row.append(text, button("Editar nome", () => void editGuest(guest).catch(showError)), button("Editar entrada", () => void editTicket(guest).catch(showError)), button("Excluir", () => void deleteGuest(guest).catch(showError)));
     guestsContainer.append(row);
   }
@@ -266,10 +269,10 @@ async function openGuests(event: EventRecord): Promise<void> {
 
 async function editTicket(guest: Guest): Promise<void> {
   if (!client || !selectedEvent) return;
-  const value = window.prompt("Tipo de entrada: standard (pista), vip ou couple (casal):", guest.ticket_type);
+  const value = window.prompt("Tipo de entrada: Homem, Mulher ou Casal:", ticketLabels[guest.ticket_type] ?? "");
   if (value === null) return;
-  const ticket = value.trim().toLowerCase();
-  if (!["standard", "vip", "couple"].includes(ticket)) throw new Error("Escolha standard, vip ou couple.");
+  const ticket = ({ homem: "man", mulher: "woman", casal: "couple" } as Record<string, string>)[value.trim().toLowerCase()];
+  if (!ticket) throw new Error("Escolha Homem, Mulher ou Casal.");
   const { error } = await client.from("guest_list_entries").update({ ticket_type: ticket }).eq("id", guest.id).select("id").single();
   if (error) throw error;
   await openGuests(selectedEvent);
@@ -299,7 +302,7 @@ async function deleteGuest(guest: Guest): Promise<void> {
 function downloadList(): void {
   if (!selectedEvent) return;
   const csvCell = (value: string) => `"${(/^[\s]*[=+\-@\t\r]/u.test(value) ? "'" : "") + value.replace(/"/g, '""')}"`;
-  const lines = [["Nome", "Entrada", "Inscrição"], ...guests.map((guest) => [guest.guest_name, guest.ticket_type, displayDate(guest.created_at)])];
+  const lines = [["Nome", "Entrada", "Inscrição"], ...guests.map((guest) => [guest.guest_name, ticketLabels[guest.ticket_type] ?? guest.ticket_type, displayDate(guest.created_at)])];
   const blob = new Blob(["\ufeff", lines.map((row) => row.map(csvCell).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
   const objectUrl = URL.createObjectURL(blob);

@@ -103,7 +103,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
       name.length < 2 ||
       name.length > 80 ||
       /[\u0000-\u001f\u007f]/u.test(name) ||
-      !["standard", "vip", "couple"].includes(guest.ticketType)
+      !["standard", "vip", "man", "woman", "couple"].includes(guest.ticketType)
     ) {
       return jsonResponse({ error: "Confira os nomes e tipos de entrada informados." }, 400, origin);
     }
