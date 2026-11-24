@@ -14,8 +14,8 @@ type EventRecord = {
   status: "draft" | "published" | "cancelled";
   image_url: string | null;
 };
-type Guest = { id: string; guest_name: string; ticket_type: string; created_at: string };
-type Submission = { guest_list_entries: Guest[] };
+type Guest = { id: string; guest_name: string; ticket_type: string; created_at: string; email: string | null };
+type Submission = { email: string | null; guest_list_entries: Omit<Guest, "email">[] };
 
 const ticketLabels: Record<string, string> = {
   man: "Homem", woman: "Mulher", couple: "Casal", standard: "Pista (antigo)", vip: "VIP (antigo)",
@@ -243,7 +243,7 @@ async function openGuests(event: EventRecord): Promise<void> {
   const pageSize = 100;
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await client.from("guest_list_submissions")
-      .select("guest_list_entries(id,guest_name,ticket_type,created_at)")
+      .select("email,guest_list_entries(id,guest_name,ticket_type,created_at)")
       .eq("event_id", event.id).order("created_at", { ascending: true }).order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
@@ -251,7 +251,9 @@ async function openGuests(event: EventRecord): Promise<void> {
     if (!data || data.length < pageSize) break;
   }
   selectedEvent = event;
-  guests = submissions.flatMap((submission) => submission.guest_list_entries);
+  guests = submissions.flatMap((submission) => submission.guest_list_entries.map((guest) => ({
+    ...guest, email: submission.email,
+  })));
   guestsTitle.textContent = `Lista: ${event.title} (${guests.length})`;
   guestsContainer.replaceChildren();
   if (!guests.length) guestsContainer.textContent = "Ainda não há convidados.";
@@ -259,7 +261,7 @@ async function openGuests(event: EventRecord): Promise<void> {
     const row = document.createElement("div");
     row.className = "guest-row-admin";
     const text = document.createElement("span");
-    text.textContent = `${guest.guest_name} · ${ticketLabels[guest.ticket_type] ?? guest.ticket_type}`;
+    text.textContent = `${guest.guest_name} · ${ticketLabels[guest.ticket_type] ?? guest.ticket_type} · E-mail: ${guest.email ?? "não informado (cadastro antigo)"}`;
     row.append(text, button("Editar nome", () => void editGuest(guest).catch(showError)), button("Editar entrada", () => void editTicket(guest).catch(showError)), button("Excluir", () => void deleteGuest(guest).catch(showError)));
     guestsContainer.append(row);
   }
@@ -302,7 +304,7 @@ async function deleteGuest(guest: Guest): Promise<void> {
 function downloadList(): void {
   if (!selectedEvent) return;
   const csvCell = (value: string) => `"${(/^[\s]*[=+\-@\t\r]/u.test(value) ? "'" : "") + value.replace(/"/g, '""')}"`;
-  const lines = [["Nome", "Entrada", "Inscrição"], ...guests.map((guest) => [guest.guest_name, ticketLabels[guest.ticket_type] ?? guest.ticket_type, displayDate(guest.created_at)])];
+  const lines = [["Nome", "Entrada", "E-mail do responsável", "Inscrição"], ...guests.map((guest) => [guest.guest_name, ticketLabels[guest.ticket_type] ?? guest.ticket_type, guest.email ?? "", displayDate(guest.created_at)])];
   const blob = new Blob(["\ufeff", lines.map((row) => row.map(csvCell).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
   const objectUrl = URL.createObjectURL(blob);

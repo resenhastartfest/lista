@@ -737,6 +737,18 @@ h3 {
   font-weight: 700;
 }
 
+.contact-field { display: grid; gap: 8px; margin-bottom: 22px; color: #e8eee8; font-size: .85rem; font-weight: 700; }
+.contact-field input { width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid rgba(235, 244, 235, .25); border-radius: 6px; color: #fff; background: #171c18; font: inherit; }
+.contact-field span { color: #a7aea8; font-size: .72rem; font-weight: 400; line-height: 1.4; }
+.signup-success[hidden] { display: none; }
+.signup-success { text-align: center; }
+.success-image { display: block; width: min(100%, 280px); max-height: 280px; object-fit: contain; margin: 0 auto 20px; border-radius: 10px; }
+.success-image[hidden] { display: none; }
+.signup-success h2 { margin: 10px 0; }
+.signup-success ul { padding: 0; margin: 22px 0; list-style: none; color: #f4f1ec; font-size: 1.35rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.signup-success > p:not(.eyebrow) { color: #bfc7c0; line-height: 1.5; }
+.signup-success button { width: 100%; margin-top: 12px; }
+
 .add-guest-button {
   padding: 8px 0 8px 8px;
   border: 0;

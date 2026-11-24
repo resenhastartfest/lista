@@ -16,6 +16,12 @@ const dialogEvent = document.querySelector<HTMLParagraphElement>("#dialog-event"
 const formStatus = document.querySelector<HTMLParagraphElement>("#form-status");
 const submitButton = document.querySelector<HTMLButtonElement>("#submit-button");
 const addGuestButton = document.querySelector<HTMLButtonElement>("#add-guest");
+const success = document.querySelector<HTMLElement>("#signup-success");
+const successImage = document.querySelector<HTMLImageElement>("#success-image");
+const successEvent = document.querySelector<HTMLElement>("#success-event");
+const successNames = document.querySelector<HTMLElement>("#success-names");
+const successMessage = document.querySelector<HTMLElement>("#success-message");
+const emailInput = document.querySelector<HTMLInputElement>("#email");
 
 if (
   !eventGrid ||
@@ -27,7 +33,7 @@ if (
   !dialogEvent ||
   !formStatus ||
   !submitButton ||
-  !addGuestButton
+  !addGuestButton || !success || !successImage || !successEvent || !successNames || !successMessage || !emailInput
 ) {
   throw new Error("A estrutura da página StartFest está incompleta.");
 }
@@ -39,6 +45,8 @@ const ticketTypes = [
 ] as const;
 
 let selectedEvent: EventListing | null = null;
+let requestId = "";
+let requestFingerprint = "";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -213,6 +221,10 @@ function openSignupDialog(event: EventListing): void {
   if (!dialog || !form || !guestRows || !dialogEvent || !formStatus || !submitButton) return;
   selectedEvent = event;
   form.reset();
+  form.hidden = false;
+  if (success) success.hidden = true;
+  requestId = "";
+  requestFingerprint = "";
   guestRows.replaceChildren(createGuestRow(0));
   updateGuestRowLabels();
   dialogEvent.textContent = `${event.title} · ${formatEventDate(event.startsAt)} às ${formatEventTime(event.startsAt)} · ${event.venue}`;
@@ -222,7 +234,7 @@ function openSignupDialog(event: EventListing): void {
     formStatus.textContent = "As inscrições online serão abertas em breve.";
   }
   dialog.showModal();
-  guestRows.querySelector<HTMLInputElement>('input[name="guestName"]')?.focus();
+  emailInput?.focus();
 }
 
 async function loadEvents(): Promise<void> {
@@ -292,7 +304,8 @@ async function loadEvents(): Promise<void> {
 
 async function submitGuestList(event: SubmitEvent): Promise<void> {
   event.preventDefault();
-  if (!form || !guestRows || !formStatus || !submitButton || !selectedEvent) return;
+  if (!form || !guestRows || !formStatus || !submitButton || !selectedEvent ||
+      !emailInput || !success || !successEvent || !successNames || !successImage || !successMessage) return;
   if (!form.reportValidity()) return;
 
   const formData = new FormData(form);
@@ -301,6 +314,7 @@ async function submitGuestList(event: SubmitEvent): Promise<void> {
     ticketType: row.querySelector<HTMLSelectElement>('select[name="ticketType"]')?.value ?? "",
   }));
   const website = String(formData.get("website") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
 
   if (!config.supabaseUrl || !config.anonKey) {
     formStatus.textContent = "As inscrições online serão abertas em breve.";
@@ -309,6 +323,11 @@ async function submitGuestList(event: SubmitEvent): Promise<void> {
 
   submitButton.disabled = true;
   formStatus.textContent = "Enviando sua lista...";
+  const fingerprint = JSON.stringify({ eventId: selectedEvent.id, email, guests });
+  if (requestFingerprint !== fingerprint) {
+    requestFingerprint = fingerprint;
+    requestId = crypto.randomUUID();
+  }
   try {
     const response = await fetch(`${config.supabaseUrl}/functions/v1/submit-guest-list`, {
       method: "POST",
@@ -320,10 +339,11 @@ async function submitGuestList(event: SubmitEvent): Promise<void> {
       body: JSON.stringify({
         eventId: selectedEvent.id,
         guests,
+        email,
         consent: formData.get("consent") === "on",
-        consentVersion: "guest-list-v1",
+        consentVersion: "guest-list-v2",
         website,
-        requestId: crypto.randomUUID(),
+        requestId,
       }),
     });
     const result: unknown = await response.json();
@@ -334,10 +354,28 @@ async function submitGuestList(event: SubmitEvent): Promise<void> {
           : "Não foi possível enviar sua lista.";
       throw new Error(message);
     }
-    form.reset();
-    guestRows.replaceChildren(createGuestRow(0));
-    updateGuestRowLabels();
-    formStatus.textContent = "Pronto! Os nomes foram adicionados à lista do evento.";
+    if (!isRecord(result) || result.ok !== true) throw new Error("Não foi possível confirmar a inscrição. Tente novamente.");
+    successEvent.textContent = selectedEvent.title;
+    successNames.replaceChildren(...guests.map((guest) => {
+      const item = document.createElement("li");
+      item.textContent = guest.name;
+      return item;
+    }));
+    if (selectedEvent.imageUrl) {
+      successImage.src = selectedEvent.imageUrl.startsWith("https://")
+        ? selectedEvent.imageUrl : `${import.meta.env.BASE_URL}${selectedEvent.imageUrl.replace(/^\/+/, "")}`;
+      successImage.alt = `Cartaz de ${selectedEvent.title}`;
+      successImage.hidden = false;
+    } else {
+      successImage.hidden = true;
+      successImage.removeAttribute("src");
+    }
+    successMessage.textContent = result.email === "accepted"
+      ? "Confirmação encaminhada por e-mail. Confira também sua caixa de spam."
+      : "Seu cadastro está confirmado. Não foi possível confirmar o envio do e-mail.";
+    form.hidden = true;
+    success.hidden = false;
+    document.querySelector<HTMLButtonElement>("#success-close")?.focus();
   } catch (error) {
     console.error("Não foi possível enviar a lista do evento.", error);
     formStatus.textContent =
@@ -347,6 +385,7 @@ async function submitGuestList(event: SubmitEvent): Promise<void> {
 }
 
 document.querySelector<HTMLButtonElement>(".dialog-close")?.addEventListener("click", () => dialog?.close());
+document.querySelector<HTMLButtonElement>("#success-close")?.addEventListener("click", () => dialog?.close());
 dialog.addEventListener("click", (event) => {
   if (event.target === dialog) dialog.close();
 });

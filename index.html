@@ -94,6 +94,10 @@
         <h2 id="dialog-title">Entrar na lista</h2>
         <p class="dialog-event" id="dialog-event"></p>
         <form id="guest-list-form">
+          <label class="contact-field">E-mail do responsável
+            <input id="email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="seu@email.com" />
+            <span>Um e-mail pode cadastrar uma lista por evento.</span>
+          </label>
           <div class="guest-list-heading">
             <span>Quem vai com você?</span>
             <button class="add-guest-button" id="add-guest" type="button">+ Adicionar pessoa</button>
@@ -104,12 +108,21 @@
           </div>
           <label class="consent-label">
             <input id="consent" name="consent" type="checkbox" required />
-            <span>Autorizo o uso dos nomes informados para organizar a lista deste evento. <a href="#privacidade">Saiba mais</a>.</span>
+            <span>Autorizo o uso dos nomes e do e-mail para organizar a lista deste evento e receber a confirmação por e-mail. <a href="#privacidade">Saiba mais</a>.</span>
           </label>
-          <p class="privacy-note" id="privacidade">Não pedimos telefone ou e-mail. Os dados ficam restritos ao evento e à equipe autorizada.</p>
+          <p class="privacy-note" id="privacidade">A equipe autorizada pode consultar os nomes e o e-mail. Para enviar a confirmação, o serviço de e-mail recebe o endereço e o nome do evento.</p>
           <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
           <button class="button button-primary submit-button" id="submit-button" type="submit">Confirmar presença <span aria-hidden="true">↗</span></button>
         </form>
+        <section id="signup-success" class="signup-success" hidden aria-live="polite">
+          <img id="success-image" class="success-image" alt="" hidden />
+          <p class="eyebrow">Presença confirmada</p>
+          <h2>Você está na lista!</h2>
+          <p id="success-event"></p>
+          <ul id="success-names"></ul>
+          <p id="success-message"></p>
+          <button type="button" class="button button-primary" id="success-close">Concluir</button>
+        </section>
       </div>
     </dialog>
 

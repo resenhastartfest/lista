@@ -30,6 +30,23 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[character] ?? character);
+}
+
+function base64(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function mimeBody(value: string): string {
+  return base64(value).match(/.{1,76}/g)?.join("\r\n") ?? "";
+}
+
 async function hashAddress(address: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -79,6 +96,7 @@ Deno.serve(async (request: Request): Promise<Response> => {
   const guests = payload.guests;
   const consent = payload.consent;
   const website = payload.website;
+  const emailInput = payload.email;
 
   if (typeof website === "string" && website.trim() !== "") {
     return jsonResponse({ error: "Não foi possível validar o envio." }, 400, origin);
@@ -86,8 +104,18 @@ Deno.serve(async (request: Request): Promise<Response> => {
   if (!isUuid(eventId) || !isUuid(requestId)) {
     return jsonResponse({ error: "Evento ou identificador da lista inválido." }, 400, origin);
   }
-  if (consent !== true || consentVersion !== "guest-list-v1") {
+  if (consent !== true || consentVersion !== "guest-list-v2") {
     return jsonResponse({ error: "É necessário aceitar o uso dos dados para este evento." }, 400, origin);
+  }
+  if (typeof emailInput !== "string") {
+    return jsonResponse({ error: "Informe um e-mail válido." }, 400, origin);
+  }
+  const email = emailInput.trim().toLowerCase();
+  const [localPart, domain] = email.split("@");
+  if (email.length > 254 || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(email) ||
+      localPart.length > 64 || localPart.startsWith(".") || localPart.endsWith(".") || localPart.includes("..") ||
+      domain.split(".").some((label) => label.length > 63)) {
+    return jsonResponse({ error: "Informe um e-mail válido." }, 400, origin);
   }
   if (!Array.isArray(guests) || guests.length < 1 || guests.length > 10) {
     return jsonResponse({ error: "A lista deve conter de 1 a 10 pessoas." }, 400, origin);
@@ -134,24 +162,96 @@ Deno.serve(async (request: Request): Promise<Response> => {
       return jsonResponse({ error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." }, 429, origin);
     }
 
-    const { error } = await supabase.rpc("create_guest_list_submission", {
+    const { data: registration, error } = await supabase.rpc("register_email_guest_list", {
       p_event_id: eventId,
       p_request_id: requestId,
-      p_consent_version: consentVersion,
+      p_email: email,
       p_guests: normalizedGuests.map((guest) => ({
         name: guest.name,
         ticketType: guest.ticketType,
       })),
     });
     if (error) {
-      console.error("Guest-list submission failed.", error.message);
+      if (error.code === "23505") {
+        return jsonResponse({ error: "Já existe um cadastro com este e-mail para este evento." }, 409, origin);
+      }
+      console.error("Guest-list submission failed.", error.code);
       if (error.code === "22023") {
         return jsonResponse({ error: "Este evento não está aceitando inscrições ou os dados precisam ser revisados." }, 400, origin);
       }
       return jsonResponse({ error: "Não foi possível salvar sua lista. Tente novamente." }, 500, origin);
     }
 
-    return jsonResponse({ ok: true }, 201, origin);
+    const record = Array.isArray(registration) ? registration[0] : null;
+    if (!record || typeof record.submission_id !== "string" || typeof record.event_title !== "string") {
+      console.error("Registration returned an invalid result.");
+      return jsonResponse({ error: "Não foi possível confirmar o resultado. Tente novamente." }, 503, origin);
+    }
+
+    if (record.created === true) {
+      const clientId = Deno.env.get("GMAIL_CLIENT_ID");
+      const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET");
+      const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
+      const sender = Deno.env.get("EMAIL_FROM");
+      let messageStatus = "failed";
+      if (clientId && clientSecret && refreshToken && sender && /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@gmail\.com$/i.test(sender)) {
+        try {
+          const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: clientId,
+              client_secret: clientSecret,
+              refresh_token: refreshToken,
+              grant_type: "refresh_token",
+            }),
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!tokenResponse.ok) {
+            console.error("Gmail token request failed:", tokenResponse.status);
+          } else {
+            const tokenData: unknown = await tokenResponse.json();
+            if (!isRecord(tokenData) || typeof tokenData.access_token !== "string" || !tokenData.access_token) {
+              console.error("Gmail token response was invalid.");
+            } else {
+              const title = escapeHtml(record.event_title);
+              const text = `Sua inscrição na lista do evento ${record.event_title} está confirmada.`;
+              const html = `<div style="background:#0a0a0a;padding:32px 16px;font-family:Arial,sans-serif;color:#f4f1ec"><div style="max-width:520px;margin:auto;background:#111b13;border:1px solid #49583e;border-radius:16px;padding:32px"><p style="color:#e9b142;font-size:13px;font-weight:bold;letter-spacing:2px">STARTFEST · PRESENÇA CONFIRMADA</p><h1 style="font-size:30px;line-height:1.2">Você está na lista!</h1><p style="color:#c3cbc3;font-size:16px;line-height:1.5">Seu cadastro foi confirmado para o evento:</p><p style="color:#e9b142;font-size:24px;font-weight:bold">${title}</p><p style="color:#c3cbc3;font-size:14px;line-height:1.5">Esperamos você para viver esse momento com a gente.</p></div></div>`;
+              const boundary = `startfest-${crypto.randomUUID()}`;
+              const mime = [
+                `From: ${sender}`, `To: ${email}`,
+                `Subject: =?UTF-8?B?${base64("Sua presença está confirmada | StartFest")}?=`,
+                "MIME-Version: 1.0", `Content-Type: multipart/alternative; boundary="${boundary}"`, "",
+                `--${boundary}`, 'Content-Type: text/plain; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", mimeBody(text),
+                `--${boundary}`, 'Content-Type: text/html; charset="UTF-8"', "Content-Transfer-Encoding: base64", "", mimeBody(html),
+                `--${boundary}--`, "",
+              ].join("\r\n");
+              const raw = base64(mime).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+              const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${tokenData.access_token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ raw }),
+                signal: AbortSignal.timeout(10000),
+              });
+              if (response.ok) messageStatus = "accepted";
+              else console.error("Gmail rejected notification:", response.status);
+            }
+          }
+        } catch {
+          console.error("Email notification request failed or timed out.");
+        }
+      } else {
+        console.error("Email integration is not configured.");
+      }
+      const { error: updateError } = await supabase.from("guest_list_submissions")
+        .update({ email_status: messageStatus }).eq("id", record.submission_id);
+      if (updateError) console.error("Failed to record email notification status.", updateError.code);
+      return jsonResponse({ ok: true, email: messageStatus }, 201, origin);
+    }
+    const { data: existing, error: lookupError } = await supabase.from("guest_list_submissions")
+      .select("email_status").eq("id", record.submission_id).single();
+    if (lookupError) console.error("Failed to read email notification status.", lookupError.code);
+    return jsonResponse({ ok: true, email: existing?.email_status ?? "pending" }, 200, origin);
   } catch (error) {
     console.error("Guest-list request failed.", error instanceof Error ? error.message : "Unknown error");
     return jsonResponse({ error: "Não foi possível concluir o envio. Tente novamente." }, 500, origin);
