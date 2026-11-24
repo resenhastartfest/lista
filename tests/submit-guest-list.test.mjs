@@ -106,7 +106,9 @@ test("normalizes the email and sends escaped styled confirmation after registrat
   const parts = [...mime.matchAll(/Content-Transfer-Encoding: base64\r\n\r\n([\s\S]*?)\r\n--startfest-/g)];
   assert.equal(parts.length, 2);
   assert.match(Buffer.from(parts[0][1].replace(/\s/g, ""), "base64").toString("utf8"), /Festa <Teste>/);
-  assert.match(Buffer.from(parts[1][1].replace(/\s/g, ""), "base64").toString("utf8"), /Festa &lt;Teste&gt;/);
+  const html = Buffer.from(parts[1][1].replace(/\s/g, ""), "base64").toString("utf8");
+  assert.match(html, /Festa &lt;Teste&gt;/);
+  assert.match(html, /<img src="https:\/\/resenhastartfest\.github\.io\/lista\/startfest-logo\.jpeg" alt="StartFest"/);
   assert.equal(app.calls.updates[0].email_status, "accepted");
 });
 

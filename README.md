@@ -37,6 +37,8 @@ As tabelas `guest_list_submissions` e `guest_list_entries` separam cada envio de
 
 O envio utiliza a [Gmail API](https://developers.google.com/workspace/gmail/api/guides/sending), sem exigir domínio próprio. A conta autorizada envia as mensagens; os visitantes não precisam ter Gmail. O Google recebe o endereço do responsável e o nome do evento. Prepare uma conta Gmail dedicada e observe os [limites de envio](https://support.google.com/mail/answer/22839).
 
+O logotipo no e-mail é carregado pela URL pública `https://resenhastartfest.github.io/lista/startfest-logo.jpeg`; mantenha esse endereço disponível ou atualize-o na função ao mudar a hospedagem. O texto da confirmação permanece legível se o cliente de e-mail bloquear imagens.
+
 1. No [Google Cloud Console](https://console.cloud.google.com/), crie ou selecione um projeto e ative **Gmail API** em **APIs e serviços > Biblioteca**.
 2. Em **Google Auth Platform**, configure a tela de consentimento, selecione público externo e adicione a própria conta Gmail como usuário de teste. Solicite apenas o escopo `https://www.googleapis.com/auth/gmail.send`.
 3. Crie um cliente OAuth do tipo **Aplicativo da Web**, adicionando `https://developers.google.com/oauthplayground` como URI de redirecionamento autorizado. Guarde o ID e o segredo do cliente.
