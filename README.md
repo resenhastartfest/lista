@@ -15,7 +15,7 @@ Copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SU
 npm run build
 ```
 
-Execute os testes da função de inscrição com `npm test`. O arquivo `tests/email_registration.sql` verifica a migration em uma transação que deve ser revertida após o teste.
+Execute os testes da função de inscrição com `npm test`. Os arquivos `tests/email_registration.sql` e `tests/rate_limit.sql` verificam as regras do banco em uma transação que deve ser revertida após o teste.
 
 ## GitHub Pages
 
@@ -27,7 +27,7 @@ O workflow gera e publica o site em pushes para `main`; pull requests executam a
 2. Configure os segredos da função `submit-guest-list`: `RATE_LIMIT_SECRET` (segredo aleatório) e `ALLOWED_ORIGINS=https://resenhastartfest.github.io,http://localhost:5173` (origens exatas separadas por vírgula, sem caminho nem curingas). Se o site antigo continuar em uso com o mesmo Supabase, inclua também `https://ednilsontheedmaster.github.io` na lista; mantenha outras origens necessárias. O Supabase fornece `SUPABASE_SERVICE_ROLE_KEY` automaticamente à função; ela nunca deve ser publicada no site.
 3. Implante a função com `npx supabase functions deploy submit-guest-list`. A configuração de autenticação e os administradores pertencem ao projeto Supabase; um projeto novo exige sua própria configuração e criação de usuários.
 
-A função valida cada pessoa, exige consentimento, limita listas a dez pessoas e aplica limite de envios por janela usando um identificador HMAC do IP. Escritas são atômicas e acessíveis somente à função com a chave de serviço; o navegador nunca recebe essa chave. RLS permite leitura pública apenas de eventos publicados e reserva os dados pessoais da lista aos usuários autenticados cujo `app_metadata.role` seja `admin`.
+A função valida cada pessoa, exige consentimento, limita listas a dez pessoas e aplica um limite de 20 tentativas em 10 minutos usando um identificador HMAC do IP; pessoas na mesma rede compartilham esse limite. Escritas são atômicas e acessíveis somente à função com a chave de serviço; o navegador nunca recebe essa chave. RLS permite leitura pública apenas de eventos publicados e reserva os dados pessoais da lista aos usuários autenticados cujo `app_metadata.role` seja `admin`.
 
 Novas inscrições oferecem as opções Homem, Mulher e Casal. Os registros antigos de Pista e VIP mantêm seus valores originais e são identificados como antigos na administração; não são convertidos automaticamente.
 
