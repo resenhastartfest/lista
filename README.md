@@ -51,7 +51,7 @@ Aplique a migration, publique a função `submit-guest-list` e o frontend de for
 
 ## Administração
 
-1. Aplique todas as migrations pendentes no projeto vinculado: `npx supabase db push --remote`. A migration administrativa cria o bucket público `event-posters`, restringe uploads a administradores e permite que eles editem ou excluam convidados. Eventos são retirados da agenda por cancelamento, sem apagar seu histórico.
+1. Aplique todas as migrations pendentes no projeto vinculado: `npx supabase db push --remote`. A migration administrativa cria o bucket público `event-posters`, restringe uploads a administradores e permite que eles editem ou inativem convidados. O histórico é preservado: o e-mail pode ser usado novamente no evento quando não restarem convidados ativos na inscrição. Cadastros antigos sem convidados são marcados como inativos. Eventos são retirados da agenda por cancelamento, sem apagar seu histórico.
 2. No Supabase, em **Authentication > Users**, crie o usuário com e-mail e senha. Pelo SQL Editor, atualize **somente o usuário desejado** com o papel administrativo, substituindo o endereço abaixo e verificando que uma única linha foi alterada:
 
    ```sql

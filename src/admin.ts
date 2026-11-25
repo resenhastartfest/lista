@@ -244,7 +244,8 @@ async function openGuests(event: EventRecord): Promise<void> {
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await client.from("guest_list_submissions")
       .select("email,guest_list_entries(id,guest_name,ticket_type,created_at)")
-      .eq("event_id", event.id).order("created_at", { ascending: true }).order("id", { ascending: true })
+      .eq("event_id", event.id).eq("guest_list_entries.is_active", true)
+      .order("created_at", { ascending: true }).order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
     if (error) throw error;
     submissions.push(...((data ?? []) as Submission[]));
@@ -262,7 +263,7 @@ async function openGuests(event: EventRecord): Promise<void> {
     row.className = "guest-row-admin";
     const text = document.createElement("span");
     text.textContent = `${guest.guest_name} · ${ticketLabels[guest.ticket_type] ?? guest.ticket_type} · E-mail: ${guest.email ?? "não informado (cadastro antigo)"}`;
-    row.append(text, button("Editar nome", () => void editGuest(guest).catch(showError)), button("Editar entrada", () => void editTicket(guest).catch(showError)), button("Excluir", () => void deleteGuest(guest).catch(showError)));
+    row.append(text, button("Editar nome", () => void editGuest(guest).catch(showError)), button("Editar entrada", () => void editTicket(guest).catch(showError)), button("Inativar", () => void inactivateGuest(guest).catch(showError)));
     guestsContainer.append(row);
   }
   guestsPanel.hidden = false;
@@ -293,12 +294,12 @@ async function editGuest(guest: Guest): Promise<void> {
   showStatus("Nome atualizado.");
 }
 
-async function deleteGuest(guest: Guest): Promise<void> {
-  if (!client || !selectedEvent || !window.confirm(`Excluir "${guest.guest_name}" da lista? Esta ação não pode ser desfeita.`)) return;
-  const { error } = await client.from("guest_list_entries").delete().eq("id", guest.id).select("id").single();
+async function inactivateGuest(guest: Guest): Promise<void> {
+  if (!client || !selectedEvent || !window.confirm(`Inativar "${guest.guest_name}" da lista? O registro será preservado no histórico.`)) return;
+  const { error } = await client.rpc("inactivate_guest_list_entry", { p_entry_id: guest.id });
   if (error) throw error;
   await openGuests(selectedEvent);
-  showStatus("Convidado excluído.");
+  showStatus("Convidado inativado.");
 }
 
 function downloadList(): void {
