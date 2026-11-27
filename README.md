@@ -23,7 +23,7 @@ O workflow gera e publica o site em pushes para `main`; pull requests executam a
 
 ## Cloudflare Pages
 
-O projeto `lista-15w` está disponível em `https://lista-15w.pages.dev/`. Para conectar ou conferir a publicação automática, em **Workers & Pages > lista-15w > Settings > Builds & deployments**, use o repositório Git conectado, branch de produção `main`, comando `npm run build` e diretório `dist`. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas variáveis de ambiente de produção e faça um novo deploy. Para usar também `startfest.com.br`, aguarde a delegação DNS para a Cloudflare e adicione o domínio em **Custom domains**; preserve o endereço `pages.dev`.
+O projeto `lista` está disponível em `https://lista-15w.pages.dev/`. Para conectar ou conferir a publicação automática, em **Workers & Pages > lista > Settings > Builds & deployments**, use o repositório Git conectado, branch de produção `main`, comando `npm run build` e diretório `dist`. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas variáveis de ambiente de produção e faça um novo deploy: elas são incorporadas durante o build; sem elas, o site usa eventos demonstrativos e não aceita inscrições. Para usar também `startfest.com.br`, adicione o domínio em **Custom domains**; preserve o endereço `pages.dev`.
 
 ## Supabase
 

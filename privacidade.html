@@ -20,7 +20,7 @@
     <main class="legal-page">
       <p class="eyebrow">StartFest</p>
       <h1>Política de privacidade</h1>
-      <p>A StartFest divulga eventos e organiza listas de convidados. Esta política descreve o tratamento de dados no site e na conta Google autorizada a enviar confirmações.</p>
+      <p>A StartFest divulga eventos e organiza listas de convidados. Esta política descreve o tratamento de dados no site e nos serviços usados para enviar confirmações.</p>
 
       <h2>Dados que recebemos</h2>
       <p>Ao cadastrar uma lista, recebemos o e-mail do responsável, os nomes e tipos de entrada das pessoas informadas, o evento escolhido, a data do cadastro e o registro de consentimento. Cadastros antigos podem não conter e-mail. Não solicitamos telefone no formulário atual.</p>
@@ -30,12 +30,12 @@
       <h2>Para que usamos os dados</h2>
       <p>Usamos os dados para receber e organizar listas, evitar inscrições duplicadas para um mesmo evento, confirmar o cadastro por e-mail, administrar eventos e convidados, proteger o serviço e produzir informações agregadas para análise administrativa. A inscrição não é usada, por si só, como autorização para mensagens promocionais.</p>
 
-      <h2>Conta Google e Gmail</h2>
-      <p>A conta Google autorizada pela StartFest concede à aplicação a permissão <code>gmail.send</code> para enviar e-mails em seu nome. Ela é usada para enviar confirmações de inscrição; o site não pede aos visitantes acesso às suas contas Google. O sistema armazena as credenciais de autorização em segredos no servidor Supabase para manter o envio, e não utiliza essa permissão para ler a caixa de entrada.</p>
-      <p>O Google recebe o endereço de destino e o conteúdo da confirmação, incluindo o nome do evento. O responsável pela conta pode retirar o acesso em <a href="https://myaccount.google.com/connections">Conexões da Conta Google</a>; isso interrompe os envios até que uma nova autorização seja configurada.</p>
+      <h2>Envio de confirmações</h2>
+      <p>As confirmações são enviadas pelo Resend, que recebe o endereço de destino e o conteúdo da mensagem, incluindo o nome do evento. As credenciais de envio ficam em segredos no servidor Supabase.</p>
+      <p>Quando o Resend não está configurado, o sistema pode usar uma conta Google autorizada pela StartFest com a permissão <code>gmail.send</code>. Nesse caso, o Google recebe os dados da confirmação; o site não pede acesso às contas Google dos visitantes nem usa essa permissão para ler a caixa de entrada. O responsável pela conta pode retirar o acesso em <a href="https://myaccount.google.com/connections">Conexões da Conta Google</a>.</p>
 
       <h2>Compartilhamento e armazenamento</h2>
-      <p>O site é hospedado no GitHub Pages; o Supabase fornece banco de dados, autenticação, armazenamento e funções de servidor; e o Google fornece o envio de e-mails. Esses fornecedores processam dados necessários à prestação dos respectivos serviços e podem operar infraestrutura em outros países.</p>
+      <p>O site é hospedado na Cloudflare Pages e também pode ser acessado pelo GitHub Pages; o Supabase fornece banco de dados, autenticação, armazenamento e funções de servidor; e o Resend ou o Google fornece o envio de e-mails. Esses fornecedores processam dados necessários à prestação dos respectivos serviços e podem operar infraestrutura em outros países.</p>
       <p>Administradores autorizados podem consultar, corrigir, excluir nomes e entradas, baixar listas em CSV e encaminhá-las manualmente a destinatários escolhidos para a organização do evento. Os dados devem ser compartilhados apenas com pessoas autorizadas e protegidos após o download.</p>
 
       <h2>Conservação e segurança</h2>
