@@ -21,10 +21,14 @@ Execute os testes da função de inscrição com `npm test`. Os arquivos `tests/
 
 O workflow gera e publica o site em pushes para `main`; pull requests executam apenas o build. Em **Settings > Pages > Build and deployment**, selecione **GitHub Actions**. Em **Settings > Secrets and variables > Actions**, cadastre a URL do projeto como variável `VITE_SUPABASE_URL` e a chave pública anon como segredo `VITE_SUPABASE_ANON_KEY`. No repositório `resenhastartfest/lista`, o endereço esperado é `https://resenhastartfest.github.io/lista/`; o build usa `/lista/` como caminho base, enquanto o desenvolvimento local usa `/`. Sem as configurações do Supabase, o site mostra eventos demonstrativos e não aceita inscrições.
 
+## Cloudflare Pages
+
+O projeto `lista-15w` está disponível em `https://lista-15w.pages.dev/`. Para conectar ou conferir a publicação automática, em **Workers & Pages > lista-15w > Settings > Builds & deployments**, use o repositório Git conectado, branch de produção `main`, comando `npm run build` e diretório `dist`. Cadastre `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas variáveis de ambiente de produção e faça um novo deploy. Para usar também `startfest.com.br`, aguarde a delegação DNS para a Cloudflare e adicione o domínio em **Custom domains**; preserve o endereço `pages.dev`.
+
 ## Supabase
 
 1. Para um projeto novo do Supabase, vincule-o com `npx supabase link --project-ref SEU_PROJECT_REF` e aplique todas as migrations com `npx supabase db push --remote`. Para continuar usando o projeto existente, preserve o banco e confira as migrations pendentes antes de aplicá-las; o código no Git não copia automaticamente eventos, listas, usuários ou arquivos do Storage para outro projeto.
-2. Configure os segredos da função `submit-guest-list`: `RATE_LIMIT_SECRET` (segredo aleatório) e `ALLOWED_ORIGINS=https://resenhastartfest.github.io,http://localhost:5173` (origens exatas separadas por vírgula, sem caminho nem curingas). Se o site antigo continuar em uso com o mesmo Supabase, inclua também `https://ednilsontheedmaster.github.io` na lista; mantenha outras origens necessárias. O Supabase fornece `SUPABASE_SERVICE_ROLE_KEY` automaticamente à função; ela nunca deve ser publicada no site.
+2. Configure os segredos da função `submit-guest-list`: `RATE_LIMIT_SECRET` (segredo aleatório) e `ALLOWED_ORIGINS=https://lista-15w.pages.dev,https://startfest.com.br,https://www.startfest.com.br,https://resenhastartfest.github.io,https://ednilsontheedmaster.github.io` (origens exatas separadas por vírgula, sem caminho nem curingas; remova os domínios antigos somente quando deixarem de ser usados). O Supabase fornece `SUPABASE_SERVICE_ROLE_KEY` automaticamente à função; ela nunca deve ser publicada no site.
 3. Implante a função com `npx supabase functions deploy submit-guest-list`. A configuração de autenticação e os administradores pertencem ao projeto Supabase; um projeto novo exige sua própria configuração e criação de usuários.
 
 A função valida cada pessoa, exige consentimento, limita listas a dez pessoas e aplica um limite de 20 tentativas em 10 minutos usando um identificador HMAC do IP; pessoas na mesma rede compartilham esse limite. Escritas são atômicas e acessíveis somente à função com a chave de serviço; o navegador nunca recebe essa chave. RLS permite leitura pública apenas de eventos publicados e reserva os dados pessoais da lista aos usuários autenticados cujo `app_metadata.role` seja `admin`.
@@ -35,9 +39,11 @@ As tabelas `guest_list_submissions` e `guest_list_entries` separam cada envio de
 
 ### Confirmação por e-mail
 
-O envio utiliza a [Gmail API](https://developers.google.com/workspace/gmail/api/guides/sending), sem exigir domínio próprio. A conta autorizada envia as mensagens; os visitantes não precisam ter Gmail. O Google recebe o endereço do responsável e o nome do evento. Prepare uma conta Gmail dedicada e observe os [limites de envio](https://support.google.com/mail/answer/22839).
+O envio prefere o Resend quando `RESEND_API_KEY` está configurado. No painel do Resend, verifique o domínio `startfest.com.br`, crie uma API key e configure os segredos da Edge Function `RESEND_API_KEY` e `RESEND_EMAIL_FROM=StartFest <listas@startfest.com.br>`. A chave deve permanecer somente nos segredos do Supabase, nunca no Cloudflare Pages, no frontend ou no Git. Até esses segredos existirem, a função mantém o envio pela Gmail API como fallback, se as respectivas credenciais Gmail ainda estiverem configuradas.
 
-O logotipo no e-mail é carregado pela URL pública `https://resenhastartfest.github.io/lista/startfest-logo.jpeg`; mantenha esse endereço disponível ou atualize-o na função ao mudar a hospedagem. O texto da confirmação permanece legível se o cliente de e-mail bloquear imagens.
+No Registro.br, a delegação dos nameservers para a Cloudflare precisa estar concluída antes de validar os registros DNS apresentados pelo Resend. Copie os registros exatamente como exibidos no domínio da sua conta Resend; não substitua registros MX existentes do seu serviço de recebimento de e-mail. A URL informada no painel do Resend não cria uma conta nem uma API key.
+
+O logotipo no e-mail é carregado pela URL pública `https://lista-15w.pages.dev/startfest-logo.jpeg`; mantenha esse endereço disponível. O texto da confirmação permanece legível se o cliente de e-mail bloquear imagens.
 
 1. No [Google Cloud Console](https://console.cloud.google.com/), crie ou selecione um projeto e ative **Gmail API** em **APIs e serviços > Biblioteca**.
 2. Em **Google Auth Platform**, configure a tela de consentimento, selecione público externo e adicione a própria conta Gmail como usuário de teste. Solicite apenas o escopo `https://www.googleapis.com/auth/gmail.send`.

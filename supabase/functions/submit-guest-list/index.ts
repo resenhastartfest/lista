@@ -189,12 +189,44 @@ Deno.serve(async (request: Request): Promise<Response> => {
     }
 
     if (record.created === true) {
-      const clientId = Deno.env.get("GMAIL_CLIENT_ID");
-      const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET");
-      const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
-      const sender = Deno.env.get("EMAIL_FROM");
+      const resendApiKey = Deno.env.get("RESEND_API_KEY");
+      const resendSender = Deno.env.get("RESEND_EMAIL_FROM");
+      const title = escapeHtml(record.event_title);
+      const text = `Sua inscrição na lista do evento ${record.event_title} está confirmada.`;
+      const html = `<div style="background:#0a0a0a;padding:32px 16px;font-family:Arial,sans-serif;color:#f4f1ec"><div style="max-width:520px;margin:auto;background:#111b13;border:1px solid #49583e;border-radius:16px;padding:32px"><img src="https://lista-15w.pages.dev/startfest-logo.jpeg" alt="StartFest" width="120" height="120" style="display:block;width:120px;height:120px;margin:0 0 24px;border-radius:16px" /><p style="color:#e9b142;font-size:13px;font-weight:bold;letter-spacing:2px">STARTFEST · PRESENÇA CONFIRMADA</p><h1 style="font-size:30px;line-height:1.2">Você está na lista!</h1><p style="color:#c3cbc3;font-size:16px;line-height:1.5">Seu cadastro foi confirmado para o evento:</p><p style="color:#e9b142;font-size:24px;font-weight:bold">${title}</p><p style="color:#c3cbc3;font-size:14px;line-height:1.5">Esperamos você para viver esse momento com a gente.</p></div></div>`;
       let messageStatus = "failed";
-      if (clientId && clientSecret && refreshToken && sender && /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@gmail\.com$/i.test(sender)) {
+      if (resendApiKey) {
+        const validSender = typeof resendSender === "string" &&
+          !/[\r\n]/u.test(resendSender) &&
+          /^(?:[^<>\r\n]+ <)?[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@startfest\.com\.br>?$/i.test(resendSender);
+        if (!validSender) {
+          console.error("Resend sender is missing or is not on the verified StartFest domain.");
+        } else {
+          try {
+            const response = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                from: resendSender,
+                to: [email],
+                subject: "Sua presença está confirmada | StartFest",
+                text,
+                html,
+              }),
+              signal: AbortSignal.timeout(10000),
+            });
+            if (response.ok) messageStatus = "accepted";
+            else console.error("Resend rejected notification:", response.status);
+          } catch {
+            console.error("Resend notification request failed or timed out.");
+          }
+        }
+      } else {
+        const clientId = Deno.env.get("GMAIL_CLIENT_ID");
+        const clientSecret = Deno.env.get("GMAIL_CLIENT_SECRET");
+        const refreshToken = Deno.env.get("GMAIL_REFRESH_TOKEN");
+        const sender = Deno.env.get("EMAIL_FROM");
+        if (clientId && clientSecret && refreshToken && sender && /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@gmail\.com$/i.test(sender)) {
         try {
           const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
             method: "POST",
@@ -214,9 +246,6 @@ Deno.serve(async (request: Request): Promise<Response> => {
             if (!isRecord(tokenData) || typeof tokenData.access_token !== "string" || !tokenData.access_token) {
               console.error("Gmail token response was invalid.");
             } else {
-              const title = escapeHtml(record.event_title);
-              const text = `Sua inscrição na lista do evento ${record.event_title} está confirmada.`;
-              const html = `<div style="background:#0a0a0a;padding:32px 16px;font-family:Arial,sans-serif;color:#f4f1ec"><div style="max-width:520px;margin:auto;background:#111b13;border:1px solid #49583e;border-radius:16px;padding:32px"><img src="https://resenhastartfest.github.io/lista/startfest-logo.jpeg" alt="StartFest" width="120" height="120" style="display:block;width:120px;height:120px;margin:0 0 24px;border-radius:16px" /><p style="color:#e9b142;font-size:13px;font-weight:bold;letter-spacing:2px">STARTFEST · PRESENÇA CONFIRMADA</p><h1 style="font-size:30px;line-height:1.2">Você está na lista!</h1><p style="color:#c3cbc3;font-size:16px;line-height:1.5">Seu cadastro foi confirmado para o evento:</p><p style="color:#e9b142;font-size:24px;font-weight:bold">${title}</p><p style="color:#c3cbc3;font-size:14px;line-height:1.5">Esperamos você para viver esse momento com a gente.</p></div></div>`;
               const boundary = `startfest-${crypto.randomUUID()}`;
               const mime = [
                 `From: ${sender}`, `To: ${email}`,
@@ -240,8 +269,9 @@ Deno.serve(async (request: Request): Promise<Response> => {
         } catch {
           console.error("Email notification request failed or timed out.");
         }
-      } else {
-        console.error("Email integration is not configured.");
+        } else {
+          console.error("Email integration is not configured.");
+        }
       }
       const { error: updateError } = await supabase.from("guest_list_submissions")
         .update({ email_status: messageStatus }).eq("id", record.submission_id);
